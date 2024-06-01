@@ -361,15 +361,22 @@ class xfinityUsage ():
 
                 if self.page.url.startswith(self.Login_Url):
                     self.debug_support()
-                    if self.page.locator("#passwd").is_visible():
+                    if self.page.locator("input#passwd").is_visible():
                         logging.info(f"Entering password (URL: {self.parse_url(self.page.url)})")
-                        self.page.locator("#passwd").press_sequentially(self.xfinity_password, delay=100)
-                        self.page.locator("#sign_in").click()
-                    elif self.page.locator("#user").is_visible():
+                        self.page.locator("input#passwd").press_sequentially(self.xfinity_password, delay=100)
+                        self.debug_support()
+                        self.page.locator("input#passwd").press("Enter")
+                        #self.page.locator("button#sign_in").click()
+                        self.debug_support()
+                    elif self.page.locator("input#user").is_visible():
                         logging.info(f"Entering username (URL: {self.parse_url(self.page.url)})")
-                        self.page.locator("#user").press_sequentially(self.xfinity_username, delay=100)
-                        self.page.locator("#sign_in").click()
+                        self.page.locator("input#user").press_sequentially(self.xfinity_username, delay=100)
+                        self.debug_support()
+                        self.page.locator("input#user").press("Enter")
+                        #self.page.locator("button#sign_in").click()
+                        self.debug_support()
                     elif self.page.locator("button#onetrust-accept-btn-handler").is_visible():
+                        self.debug_support()
                         self.page.locator("button#onetrust-accept-btn-handler").click()
                     else:
                         self.is_session_active = False

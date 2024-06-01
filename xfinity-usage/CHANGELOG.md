@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.9.1
+
+- Changed to keyboard enter instead of clicking on sign_in button
+
 ## 0.0.9
 
 - Encypt the Xfinity password in the log file when in debug mode
