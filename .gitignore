@@ -165,3 +165,8 @@ xfinity-usage/runtest.sh
 xfinity-usage/.sensor-backup
 MQTT_NOTES.md
 
+xfinity-usage/playwright.config.js
+xfinity-usage/package-lock.json
+xfinity-usage/package.json
+xfinity-usage/tests/example.spec.js
+xfinity-usage/tests-examples/demo-todo-app.spec.js
