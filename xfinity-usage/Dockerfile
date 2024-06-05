@@ -130,7 +130,8 @@ RUN pip3 install --upgrade pip && \
   pyee==11.1.0 \
   greenlet==3.0.3 \
   tenacity==8.3.0 \
-  requests==2.32.3 
+  requests==2.32.3 \
+  PyJWT==2.8.0
 
 RUN pip3 install playwright==1.44.0 && \
   playwright install-deps && \

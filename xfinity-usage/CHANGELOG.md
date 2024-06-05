@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.9.3
+
+- Login logic and usage data gathering it now based on https://www.xfinity.com/learn/internet-service/auth page instead of https://customer.xfinity.com/#/devices#usage
+- Added a lot more page checks to make sure page is properly loaded
+- Session data is now based on the OAuth JWT token
+- Added PyJWT library to Docker file to allow for JWT token processing
+- Need to cleanup any old references to the previous logic
+
 ## 0.0.9.1
 
 - Changed to keyboard enter instead of clicking on sign_in button
