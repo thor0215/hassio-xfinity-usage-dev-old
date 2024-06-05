@@ -11,7 +11,7 @@ from datetime import datetime
 from time import sleep
 from pathlib import Path
 from tenacity import stop_after_attempt,  wait_exponential, retry, before_sleep_log
-from playwright.sync_api import Playwright, Route, sync_playwright
+from playwright.sync_api import Playwright, Route, sync_playwright, expect
 
 def get_current_unix_epoch() -> float:
     return time.time()
@@ -91,8 +91,8 @@ class xfinityUsage ():
                 self.update_ha_sensor()
 
         #self.browser = playwright.firefox.launch(headless=False,slow_mo=3000)
-        #self.browser = playwright.firefox.launch(headless=False)
-        self.browser = playwright.firefox.launch(headless=True)
+        self.browser = playwright.firefox.launch(headless=False)
+        #self.browser = playwright.firefox.launch(headless=True)
 
 
         self.context = self.browser.new_context(
@@ -350,6 +350,25 @@ class xfinityUsage ():
 
         self.page.goto(self.Internet_Service_Url)
         logging.info(f"Loading Internet Usage (URL: {self.parse_url(self.page.url)})")
+        self.page.wait_for_url(f'{self.Login_Url}*')
+        expect(self.page).to_have_title('Sign in to Xfinity')
+        expect(self.page.locator("input#user")).to_be_enabled()
+        logging.info(f"Entering username (URL: {self.parse_url(self.page.url)})")
+        self.page.locator("input#user").press_sequentially(self.xfinity_username, delay=100)
+        self.debug_support()
+        #self.page.locator("input#user").press("Enter")
+        self.page.locator("button[type=submit]#sign_in").click()
+        self.debug_support()
+        self.page.wait_for_url(f'{self.Login_Url}*')
+        expect(self.page).to_have_title('Sign in to Xfinity')
+        expect(self.page.locator("input#passwd")).to_be_enabled()
+        logging.info(f"Entering password (URL: {self.parse_url(self.page.url)})")
+        self.page.locator("input#passwd").press_sequentially(self.xfinity_password, delay=100)
+        self.debug_support()
+        #self.page.locator("input#passwd").press("Enter")
+        self.page.locator("button[type=submit]#sign_in").click()
+        self.debug_support()
+        self.page.wait_for_url(self.Internet_Service_Url)
 
         while self.usage_data == None:
             try:
@@ -365,8 +384,8 @@ class xfinityUsage ():
                         logging.info(f"Entering password (URL: {self.parse_url(self.page.url)})")
                         self.page.locator("input#passwd").press_sequentially(self.xfinity_password, delay=100)
                         self.debug_support()
-                        self.page.locator("input#passwd").press("Enter")
-                        #self.page.locator("button#sign_in").click()
+                        #self.page.locator("input#passwd").press("Enter")
+                        self.page.locator("button[type=submit]#sign_in").click()
                         self.debug_support()
                     elif self.page.locator("input#user").is_visible():
                         logging.info(f"Entering username (URL: {self.parse_url(self.page.url)})")
@@ -378,8 +397,6 @@ class xfinityUsage ():
                     elif self.page.locator("button#onetrust-accept-btn-handler").is_visible():
                         self.debug_support()
                         self.page.locator("button#onetrust-accept-btn-handler").click()
-                    else:
-                        self.is_session_active = False
                 elif self.page.url.startswith(self.Internet_Service_Url):
                     if self.is_session_active and self.usage_data == None:
                         if self.reload_counter < 5:
