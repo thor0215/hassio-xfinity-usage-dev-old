@@ -8,6 +8,7 @@ import fnmatch
 import time
 import base64
 import jwt
+import re
 from datetime import datetime
 from time import sleep
 from pathlib import Path
@@ -61,12 +62,10 @@ class xfinityUsage ():
 
         self.POLLING_RATE = float(os.environ.get('POLLING_RATE', "300.0"))
 
-        #self.Internet_Service_Url = 'https://customer.xfinity.com/#/devices#usage'
+        self.View_Usage_Url = 'https://customer.xfinity.com/#/devices#usage'
         self.Internet_Service_Url = 'https://www.xfinity.com/learn/internet-service/auth'
         self.Login_Url = f"https://login.xfinity.com/login"
         self.Session_Url = 'https://customer.xfinity.com/apis/session'
-        self.Customer_Usage_JSON_Url = 'https://customer.xfinity.com/apis/csp/account/me/services/internet/usage?filter=internet'
-        self.Customer_Plan_Details_JSON_Url = 'https://customer.xfinity.com/apis/csp/account/me/services/internet/plan'
         self.Usage_JSON_Url = 'https://api.sc.xfinity.com/session/csp/selfhelp/account/me/services/internet/usage'
         self.Plan_Details_JSON_Url = 'https://api.sc.xfinity.com/session/plan'
         self.BASHIO_SUPERVISOR_API = os.environ.get('BASHIO_SUPERVISOR_API', '')
@@ -94,8 +93,8 @@ class xfinityUsage ():
                 self.usage_data = file.read()
                 self.update_ha_sensor()
 
-        #self.browser = playwright.firefox.launch(headless=False,slow_mo=3000)
-        #self.browser = playwright.firefox.launch(headless=False,devtools=True)
+        #self.browser = playwright.firefox.launch(headless=False,slow_mo=5000)
+        #self.browser = playwright.firefox.launch(headless=False)
         self.browser = playwright.firefox.launch(headless=True)
 
 
@@ -107,6 +106,7 @@ class xfinityUsage ():
 
         # Block unnecessary requests
         self.context.route("**/*", lambda route: self.abort_route(route))
+        self.context.set_default_navigation_timeout(self.timeout)
 
         self.page = self.context.new_page()
 
@@ -268,22 +268,6 @@ class xfinityUsage ():
         if response.ok:
             if 'x-ssm-token' in response.headers:
                 self.check_jwt_session(response)
-            """
-                Valid Plan Details respons:
-                    {"tier": {
-                        "uploadSpeed": 20.0,
-                        "downloadSpeed": 800.0,
-                        "productNumber": "20300456",
-                        "tierOfService": "Superfast Internet"
-                    }}
-            """
-            if response.url == self.Customer_Plan_Details_JSON_Url:
-                self.plan_details_data = {}
-                self.plan_details_data['InternetDownloadSpeed'] = int(response.json()['tier']['downloadSpeed'])
-                self.plan_details_data['InternetUploadSpeed'] = int(response.json()['tier']['uploadSpeed'])
-                self.plan_details_data['tierOfService'] = response.json()['tier']['tierOfService']
-                logging.info(f"Updating Plan Details")
-                logging.debug(f"Updating Plan Details {json.dumps(response.json())}")
 
             if response.url == self.Plan_Details_JSON_Url:
                 self.plan_details_data = {}
@@ -292,7 +276,6 @@ class xfinityUsage ():
                 upload_speed = response.json()["shoppingOfferDetail"]["dynamicParameters"][0]["value"].split(" ",1)[0]
                 self.plan_details_data['InternetDownloadSpeed'] = int(download_speed)
                 self.plan_details_data['InternetUploadSpeed'] = int(upload_speed)
-                #self.plan_details_data['tierOfService'] = response.json()['tier']['tierOfService']
                 logging.info(f"Updating Plan Details")
                 logging.debug(f"Updating Plan Details {json.dumps(self.plan_details_data)}")
             """
@@ -355,95 +338,50 @@ class xfinityUsage ():
         Returns: None
         """
         self.usage_data = None
+        self.plan_details_data = None
+        self.usage_details_data = None
         self.is_session_active = False
 
+        # Username Section
         self.page.goto(self.Internet_Service_Url)
         logging.info(f"Loading Internet Usage (URL: {self.parse_url(self.page.url)})")
         self.page.wait_for_url(f'{self.Login_Url}*')
         expect(self.page).to_have_title('Sign in to Xfinity')
-        expect(self.page.locator("input#user")).to_be_enabled()
+        expect(self.page.locator("input#user")).to_be_editable()
         logging.info(f"Entering username (URL: {self.parse_url(self.page.url)})")
         self.page.locator("input#user").press_sequentially(self.xfinity_username, delay=100)
         self.debug_support()
-        #self.page.locator("input#user").press("Enter")
         self.page.locator("button[type=submit]#sign_in").click()
         self.debug_support()
+
+        # Password Section
         self.page.wait_for_url(f'{self.Login_Url}*')
         expect(self.page).to_have_title('Sign in to Xfinity')
-        expect(self.page.locator("input#passwd")).to_be_enabled()
+        expect(self.page.locator("input#passwd")).to_be_editable()
         logging.info(f"Entering password (URL: {self.parse_url(self.page.url)})")
         self.page.locator("input#passwd").press_sequentially(self.xfinity_password, delay=100)
         self.debug_support()
-        #self.page.locator("input#passwd").press("Enter")
         self.page.locator("button[type=submit]#sign_in").click()
         self.debug_support()
+
+        # Loading Xfinity Internet Customer Overview Page
         self.page.wait_for_url(self.Internet_Service_Url)
+        self.page.wait_for_load_state("load")
 
-        while self.usage_data == None:
-            try:
-                self.page.wait_for_load_state("networkidle",timeout=self.timeout)
+        while self.plan_details_data is None or self.usage_details_data is None:
+            expect(self.page.get_by_test_id('planRowDetail').filter(has=self.page.locator(f"prism-button[href=\"{self.View_Usage_Url}\"]"))).to_be_visible()
+            logging.debug(f"Finished loading page (URL: {self.page.url})")
 
-                expect(self.page.get_by_test_id('planRowDetail'))
-                test_locator = self.page.get_by_test_id('planRowDetail')
-                logging.debug(f"Finished loading page (URL: {self.page.url})")
+            self.debug_support()
 
-                self.debug_support()
+        # Now compile the usage data for the sensor
+        self.process_usage_json(self.usage_details_data)
 
-                if  self.plan_details_data is not None and \
-                    self.usage_details_data is not None:
-                        self.process_usage_json(self.usage_details_data)
-
-                if  self.is_session_active and self.usage_data is not None:
-                    logging.debug(f"Sensor API Url: {self.SENSOR_URL}")
-                    self.update_ha_sensor()
-                    self.update_sensor_file()
-
-                """
-                if self.page.url.startswith(self.Login_Url):
-                    self.debug_support()
-                    if self.page.locator("input#passwd").is_visible():
-                        logging.info(f"Entering password (URL: {self.parse_url(self.page.url)})")
-                        self.page.locator("input#passwd").press_sequentially(self.xfinity_password, delay=100)
-                        self.debug_support()
-                        #self.page.locator("input#passwd").press("Enter")
-                        self.page.locator("button[type=submit]#sign_in").click()
-                        self.debug_support()
-                    elif self.page.locator("input#user").is_visible():
-                        logging.info(f"Entering username (URL: {self.parse_url(self.page.url)})")
-                        self.page.locator("input#user").press_sequentially(self.xfinity_username, delay=100)
-                        self.debug_support()
-                        self.page.locator("input#user").press("Enter")
-                        #self.page.locator("button#sign_in").click()
-                        self.debug_support()
-                    elif self.page.locator("button#onetrust-accept-btn-handler").is_visible():
-                        self.debug_support()
-                        self.page.locator("button#onetrust-accept-btn-handler").click()
-                elif self.page.url.startswith(self.Internet_Service_Url):
-                    if self.is_session_active and self.usage_data == None:
-                        if self.reload_counter < 5:
-                            logging.info(f"Didn't get usage data, reloading page (URL: {urllib.parse.urlparse(self.page.url).geturl()})")
-                            #self.page.goto(self.Internet_Service_Url)
-                            self.page.reload()
-                            self.reload_counter+=1
-                        else:
-                            logging.info(f"Didn't get usage data, exiting loop, too many retries")
-                            break
-
-                    if  self.is_session_active and self.usage_data is not None:
-                        logging.debug(f"Sensor API Url: {self.SENSOR_URL}")
-                        self.update_ha_sensor()
-                        self.update_sensor_file()
-
-                    self.is_session_active = True
-                else:
-                    self.is_session_active = False
-                    self.page.goto(self.Internet_Service_Url)
-                    logging.info(f"Session Inactive...loading URL: {urllib.parse.urlparse(self.page.url).geturl()}")
-                """
-
-            except KeyboardInterrupt:
-                # quit
-                sys.exit()
+        #if  self.is_session_active and self.usage_data is not None:
+        if self.usage_data is not None:
+            logging.debug(f"Sensor API Url: {self.SENSOR_URL}")
+            self.update_ha_sensor()
+            self.update_sensor_file()
 
 # Retry
 # Stop retrying after 15 attempts
