@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.9.5
+
+- Updated Docker file to no longer install software-properties-common and instead only install necessary packages for Playwright and Firefox
+
 ## 0.0.9.4
 
 - Now using expect as recommended by Playwright API documentation instead of networkidle. This allows the while loop to exit once the raw plan data and usage data is received. Then the data is processed outside the while loop and pushed to the Home Assistant sensor
