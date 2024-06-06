@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.10.1
+
+- Removed while loop and added an assertion if we do not get the data after the Usage data table loads
+
 ## 0.0.9.5
 
 - Updated Docker file to no longer install software-properties-common and instead only install necessary packages for Playwright and Firefox
