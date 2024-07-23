@@ -14,7 +14,7 @@ Fetch Xfinity Internet Service Usage Data and publish it to a Home Assistant sen
 
 ## Setup
 
-### This addon will not work if your Xfinity account is using MFA
+### ***This addon will not work if your Xfinity account is using MFA***
 
 1. Add this repository `https://github.com/thor0215/hassio-xfinity-usage-dev` to Home Assistant as a source for third-party addons. See the [Home Assistant documentation](https://www.home-assistant.io/common-tasks/os#installing-third-party-add-ons) if you have questions on how to do that. You can also use the button below.
 
